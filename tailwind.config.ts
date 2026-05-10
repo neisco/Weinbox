@@ -7,7 +7,7 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        wine: "var(--wine)",
+        wine: "rgb(127 23 52 / <alpha-value>)",
         "wine-dark": "var(--wine-dark)"
       }
     }
