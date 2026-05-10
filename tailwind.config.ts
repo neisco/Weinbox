@@ -5,10 +5,10 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "rgb(251 250 248 / <alpha-value>)",
-        foreground: "rgb(23 19 20 / <alpha-value>)",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
         wine: "rgb(127 23 52 / <alpha-value>)",
-        "wine-dark": "rgb(74 11 30 / <alpha-value>)"
+        "wine-dark": "var(--wine-dark)"
       }
     }
   },
