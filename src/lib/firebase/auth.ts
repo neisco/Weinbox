@@ -4,6 +4,7 @@ import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebas
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { assertFirebaseConfigured, auth, db, enableOfflinePersistence, googleProvider, isFirebaseConfigured } from "./client";
+import { cleanFirestoreData } from "./firestore-data";
 import type { UserProfile } from "@/types/wine";
 
 export function useAuthUser() {
@@ -43,7 +44,7 @@ export function useAuthUser() {
             onboarded: false,
             createdAt: now
           };
-          await setDoc(ref, { ...newProfile, serverCreatedAt: serverTimestamp() });
+          await setDoc(ref, cleanFirestoreData({ ...newProfile, serverCreatedAt: serverTimestamp() }));
           setProfile(newProfile);
         } else {
           setProfile(snap.data() as UserProfile);

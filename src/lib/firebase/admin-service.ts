@@ -1,5 +1,6 @@
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from "firebase/firestore";
 import { db } from "./client";
+import { cleanFirestoreData } from "./firestore-data";
 import { UserProfile } from "@/types/wine";
 
 export type Invitation = {
@@ -18,12 +19,12 @@ export async function fetchUsers() {
 export async function createInvitation(email?: string) {
   const token = crypto.randomUUID();
   const invite: Invitation = { email, token, status: "open", createdAt: new Date().toISOString() };
-  await addDoc(collection(db, "invites"), invite);
+  await addDoc(collection(db, "invites"), cleanFirestoreData(invite));
   return `${window.location.origin}?invite=${token}`;
 }
 
 export async function setUserDisabled(uid: string, disabled: boolean) {
-  await updateDoc(doc(db, "users", uid), { disabled });
+  await updateDoc(doc(db, "users", uid), cleanFirestoreData({ disabled }));
 }
 
 export async function deleteUserProfile(uid: string) {
