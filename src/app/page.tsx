@@ -59,13 +59,13 @@ const initialWine = {
   consumedBottles: 0,
   grapes: "",
   grapeShares: "",
-  purchasePrice: undefined as number | undefined,
+  purchasePrice: null as number | null,
   purchaseDate: "",
   purchasePlace: "",
   comment: "",
   drinkFrom: "",
   drinkUntil: "",
-  marketValue: undefined as number | undefined,
+  marketValue: null as number | null,
   lastMarketSync: "",
   imageUrl: "",
   storageLocation: "",
@@ -351,7 +351,7 @@ function Cellar(props: {
 }
 
 function WineForm({ wineForm, setWineForm, saveWine, saving }: { wineForm: WineFormState; setWineForm: (wine: WineFormState) => void; saveWine: (event: FormEvent) => void; saving: boolean }) {
-  const update = (key: keyof WineFormState, value: string | number | boolean | undefined) => setWineForm({ ...wineForm, [key]: value });
+  const update = (key: keyof WineFormState, value: string | number | boolean | null) => setWineForm({ ...wineForm, [key]: value });
   return (
     <form onSubmit={saveWine} className="glass-card h-fit rounded-[2rem] p-5">
       <h2 className="text-xl font-bold"><Plus className="mr-2 inline size-5" />Wein hinzufügen</h2>
@@ -362,7 +362,7 @@ function WineForm({ wineForm, setWineForm, saveWine, saving }: { wineForm: WineF
         <div className="grid grid-cols-2 gap-3"><Input label="Land*" value={wineForm.country} onChange={(value) => update("country", value)} required /><Input label="Region*" value={wineForm.region} onChange={(value) => update("region", value)} required /></div>
         <div className="grid grid-cols-2 gap-3"><Select label="Flaschengrösse" value={String(wineForm.bottleSize)} options={bottleSizes.map(String)} onChange={(value) => update("bottleSize", Number(value))} /><Input label="Anzahl" type="number" value={wineForm.currentBottles} onChange={(value) => setWineForm({ ...wineForm, currentBottles: Number(value), originalBottles: Number(value) })} /></div>
         <Input label="Traubensorten" value={wineForm.grapes} onChange={(value) => update("grapes", value)} />
-        <div className="grid grid-cols-2 gap-3"><Input label="Kaufpreis CHF" type="number" value={wineForm.purchasePrice ?? ""} onChange={(value) => update("purchasePrice", value ? Number(value) : undefined)} /><Input label="Marktwert" type="number" value={wineForm.marketValue ?? ""} onChange={(value) => update("marketValue", value ? Number(value) : undefined)} /></div>
+        <div className="grid grid-cols-2 gap-3"><Input label="Kaufpreis CHF" type="number" value={wineForm.purchasePrice ?? ""} onChange={(value) => update("purchasePrice", value ? Number(value) : null)} /><Input label="Marktwert" type="number" value={wineForm.marketValue ?? ""} onChange={(value) => update("marketValue", value ? Number(value) : null)} /></div>
         <div className="grid grid-cols-2 gap-3"><Input label="Trinkreif ab" type="date" value={wineForm.drinkFrom} onChange={(value) => update("drinkFrom", value)} /><Input label="Trinkreif bis" type="date" value={wineForm.drinkUntil} onChange={(value) => update("drinkUntil", value)} /></div>
         <div className="grid grid-cols-3 gap-3"><Input label="Lagerort" value={wineForm.storageLocation} onChange={(value) => update("storageLocation", value)} /><Input label="Regal" value={wineForm.shelf} onChange={(value) => update("shelf", value)} /><Input label="Fach" value={wineForm.compartment} onChange={(value) => update("compartment", value)} /></div>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={wineForm.favorite} onChange={(event) => update("favorite", event.target.checked)} /> Favorit</label>
