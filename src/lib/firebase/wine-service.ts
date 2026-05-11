@@ -36,6 +36,8 @@ export async function upsertWine(uid: string, input: Omit<Wine, "ownerId" | "cre
   const now = new Date().toISOString();
   const payload = {
     ...input,
+    purchasePrice: input.purchasePrice ?? null,
+    marketValue: input.marketValue ?? null,
     ownerId: uid,
     updatedAt: now,
     status: input.currentBottles === 0 ? "empty" : "active",

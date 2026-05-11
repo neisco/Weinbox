@@ -74,7 +74,7 @@ export function parseWineImport(file: File) {
       originalBottles: Number(row["Anzahl Flaschen"] ?? 1),
       consumedBottles: 0,
       grapes: String(row.Traubensorten ?? ""),
-      purchasePrice: row["Kaufpreis CHF"] ? Number(row["Kaufpreis CHF"]) : undefined,
+      purchasePrice: row["Kaufpreis CHF"] ? Number(row["Kaufpreis CHF"]) : null,
       purchaseDate: String(row.Kaufdatum ?? ""),
       drinkFrom: String(row["Trinkreif ab"] ?? ""),
       drinkUntil: String(row["Trinkreif bis"] ?? ""),
