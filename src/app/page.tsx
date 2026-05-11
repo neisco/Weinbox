@@ -47,6 +47,7 @@ const emptyFilters: WineFilters = {
 };
 
 const initialWine = {
+  id: undefined as string | undefined,
   name: "",
   producer: "",
   vintage: new Date().getFullYear(),
@@ -77,6 +78,41 @@ const initialWine = {
 
 type WineFormState = typeof initialWine;
 
+const emptyWines: Wine[] = [];
+const emptyDrinkEvents: DrinkEvent[] = [];
+
+function wineToFormState(wine: Wine): WineFormState {
+  return {
+    id: wine.id,
+    name: wine.name,
+    producer: wine.producer,
+    vintage: wine.vintage,
+    type: wine.type,
+    country: wine.country,
+    region: wine.region,
+    bottleSize: wine.bottleSize,
+    currentBottles: wine.currentBottles,
+    originalBottles: wine.originalBottles,
+    consumedBottles: wine.consumedBottles,
+    grapes: wine.grapes ?? "",
+    grapeShares: wine.grapeShares ?? "",
+    purchasePrice: wine.purchasePrice ?? null,
+    purchaseDate: wine.purchaseDate ?? "",
+    purchasePlace: wine.purchasePlace ?? "",
+    comment: wine.comment ?? "",
+    drinkFrom: wine.drinkFrom ?? "",
+    drinkUntil: wine.drinkUntil ?? "",
+    marketValue: wine.marketValue ?? null,
+    lastMarketSync: wine.lastMarketSync ?? "",
+    imageUrl: wine.imageUrl ?? "",
+    storageLocation: wine.storageLocation ?? "",
+    shelf: wine.shelf ?? "",
+    compartment: wine.compartment ?? "",
+    row: wine.row ?? "",
+    favorite: wine.favorite
+  };
+}
+
 export default function Home() {
   const { user, profile, loading, error: authError, isConfigured } = useAuthUser();
   const queryClient = useQueryClient();
@@ -85,7 +121,7 @@ export default function Home() {
   const [wineForm, setWineForm] = useState<WineFormState>(initialWine);
   const [selectedWine, setSelectedWine] = useState<Wine | null>(null);
   const [importPreview, setImportPreview] = useState<WineFormState[]>([]);
-  const [rating, setRating] = useState<1 | 2 | 3 | 4 | 5>(4);
+  const [rating, setRating] = useState(4);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const winesQuery = useQuery({ queryKey: ["wines", user?.uid], queryFn: () => fetchWines(user!.uid), enabled: Boolean(user) });
@@ -94,6 +130,12 @@ export default function Home() {
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["wines", user?.uid] });
     void queryClient.invalidateQueries({ queryKey: ["drinkEvents", user?.uid] });
+  };
+
+  const editWine = (wine: Wine) => {
+    setWineForm(wineToFormState(wine));
+    setSelectedWine(null);
+    setActiveTab("cellar");
   };
 
   const saveWine = useMutation({
@@ -117,8 +159,8 @@ export default function Home() {
     onError: (error) => setActionError(error instanceof Error ? error.message : "Die Flasche konnte nicht ausgetrunken werden.")
   });
 
-  const wines = winesQuery.data ?? [];
-  const drinks = drinksQuery.data ?? [];
+  const wines = winesQuery.data ?? emptyWines;
+  const drinks = drinksQuery.data ?? emptyDrinkEvents;
   const visibleWines = useMemo(() => applyWineFilters(wines, filters), [wines, filters]);
   const stats = useMemo(() => buildStats(wines, drinks), [wines, drinks]);
 
@@ -172,6 +214,7 @@ export default function Home() {
           wineForm={wineForm}
           setWineForm={setWineForm}
           saveWine={(event) => { event.preventDefault(); saveWine.mutate(wineForm); }}
+          resetWine={() => setWineForm(initialWine)}
           saving={saveWine.isPending}
           wines={visibleWines}
           allWines={wines}
@@ -202,6 +245,7 @@ export default function Home() {
           rating={rating}
           setRating={setRating}
           onClose={() => setSelectedWine(null)}
+          onEdit={() => editWine(selectedWine)}
           onConsume={(comment, location, consumedAt) => consume.mutate({
             wine: selectedWine,
             event: {
@@ -331,7 +375,7 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 
 function Cellar(props: {
   filters: WineFilters; onFilters: (filters: WineFilters) => void; wineForm: WineFormState; setWineForm: (wine: WineFormState) => void;
-  saveWine: (event: FormEvent) => void; saving: boolean; wines: Wine[]; allWines: Wine[]; selectWine: (wine: Wine) => void; deleteWine: (id: string) => void; restoreWine: (id: string) => void;
+  saveWine: (event: FormEvent) => void; resetWine: () => void; saving: boolean; wines: Wine[]; allWines: Wine[]; selectWine: (wine: Wine) => void; deleteWine: (id: string) => void; restoreWine: (id: string) => void;
 }) {
   return (
     <section className="grid gap-6 lg:grid-cols-[26rem_1fr]">
@@ -350,11 +394,11 @@ function Cellar(props: {
   );
 }
 
-function WineForm({ wineForm, setWineForm, saveWine, saving }: { wineForm: WineFormState; setWineForm: (wine: WineFormState) => void; saveWine: (event: FormEvent) => void; saving: boolean }) {
+function WineForm({ wineForm, setWineForm, saveWine, resetWine, saving }: { wineForm: WineFormState; setWineForm: (wine: WineFormState) => void; saveWine: (event: FormEvent) => void; resetWine: () => void; saving: boolean }) {
   const update = (key: keyof WineFormState, value: string | number | boolean | null) => setWineForm({ ...wineForm, [key]: value });
   return (
     <form onSubmit={saveWine} className="glass-card h-fit rounded-[2rem] p-5">
-      <h2 className="text-xl font-bold"><Plus className="mr-2 inline size-5" />Wein hinzufügen</h2>
+      <h2 className="text-xl font-bold"><Plus className="mr-2 inline size-5" />{wineForm.id ? "Wein bearbeiten" : "Wein hinzufügen"}</h2>
       <div className="mt-4 grid gap-3">
         <Input label="Weinname*" value={wineForm.name} onChange={(value) => update("name", value)} required />
         <Input label="Produzent*" value={wineForm.producer} onChange={(value) => update("producer", value)} required />
@@ -366,7 +410,8 @@ function WineForm({ wineForm, setWineForm, saveWine, saving }: { wineForm: WineF
         <div className="grid grid-cols-2 gap-3"><Input label="Trinkreif ab" type="date" value={wineForm.drinkFrom} onChange={(value) => update("drinkFrom", value)} /><Input label="Trinkreif bis" type="date" value={wineForm.drinkUntil} onChange={(value) => update("drinkUntil", value)} /></div>
         <div className="grid grid-cols-3 gap-3"><Input label="Lagerort" value={wineForm.storageLocation} onChange={(value) => update("storageLocation", value)} /><Input label="Regal" value={wineForm.shelf} onChange={(value) => update("shelf", value)} /><Input label="Fach" value={wineForm.compartment} onChange={(value) => update("compartment", value)} /></div>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={wineForm.favorite} onChange={(event) => update("favorite", event.target.checked)} /> Favorit</label>
-        <button className="focus-ring rounded-full bg-wine py-3 font-bold text-white disabled:opacity-50" disabled={saving}>{saving ? "Speichert…" : "Speichern & zusammenführen"}</button>
+        <button className="focus-ring rounded-full bg-wine py-3 font-bold text-white disabled:opacity-50" disabled={saving}>{saving ? "Speichert…" : wineForm.id ? "Änderungen speichern" : "Speichern & zusammenführen"}</button>
+        {wineForm.id && <button type="button" className="rounded-full bg-white py-3 font-bold text-neutral-700 shadow" onClick={resetWine}>Bearbeiten abbrechen</button>}
       </div>
     </form>
   );
@@ -411,13 +456,13 @@ function WineRow({ wine }: { wine: Wine }) {
 
 function History({ drinks, addExternal }: { drinks: DrinkEvent[]; addExternal: (event: Omit<DrinkEvent, "ownerId" | "source" | "createdAt">) => void }) {
   const [name, setName] = useState("");
-  const [rating, setRating] = useState<1 | 2 | 3 | 4 | 5>(4);
+  const [rating, setRating] = useState(4);
   return (
     <section className="grid gap-6 lg:grid-cols-[24rem_1fr]">
       <form className="glass-card h-fit rounded-[2rem] p-5" onSubmit={(event) => { event.preventDefault(); addExternal({ wineName: name, rating, consumedAt: new Date().toISOString().slice(0, 10) }); setName(""); }}>
         <h2 className="font-bold">Auswärts getrunkenen Wein erfassen</h2>
         <Input label="Weinname" value={name} onChange={setName} required />
-        <Select label="Bewertung" value={String(rating)} options={["1", "2", "3", "4", "5"]} onChange={(value) => setRating(Number(value) as 1 | 2 | 3 | 4 | 5)} />
+        <Input label="Bewertung (1–5)" type="number" min={1} max={5} step={0.1} value={rating} onChange={(value) => setRating(clampRating(value))} />
         <button className="mt-4 rounded-full bg-wine px-5 py-2 font-bold text-white">Speichern</button>
       </form>
       <div className="glass-card rounded-[2rem] p-5"><h2 className="font-bold">Trinkhistorie</h2><div className="mt-4 space-y-3">{drinks.map((drink) => <div key={drink.id} className="rounded-2xl bg-white p-4"><strong>{drink.wineName}</strong><p className="text-sm text-neutral-500">{drink.consumedAt} · {drink.rating}/5 · {drink.source === "external" ? "auswärts" : "Keller"}</p></div>)}</div></div>
@@ -483,7 +528,7 @@ function Privacy() {
   );
 }
 
-function DrinkModal({ wine, rating, setRating, onClose, onConsume }: { wine: Wine; rating: 1 | 2 | 3 | 4 | 5; setRating: (rating: 1 | 2 | 3 | 4 | 5) => void; onClose: () => void; onConsume: (comment: string, location: string, date: string) => void }) {
+function DrinkModal({ wine, rating, setRating, onClose, onEdit, onConsume }: { wine: Wine; rating: number; setRating: (rating: number) => void; onClose: () => void; onEdit: () => void; onConsume: (comment: string, location: string, date: string) => void }) {
   const [comment, setComment] = useState("");
   const [location, setLocation] = useState("Zuhause");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -493,19 +538,25 @@ function DrinkModal({ wine, rating, setRating, onClose, onConsume }: { wine: Win
         <h2 className="text-2xl font-bold">{wine.name}</h2>
         <p className="text-neutral-500">Was möchtest du tun?</p>
         <div className="mt-5 grid gap-3">
-          <Select label="Bewertung" value={String(rating)} options={["1", "2", "3", "4", "5"]} onChange={(value) => setRating(Number(value) as 1 | 2 | 3 | 4 | 5)} />
+          <Input label="Bewertung (1–5)" type="number" min={1} max={5} step={0.1} value={rating} onChange={(value) => setRating(clampRating(value))} />
           <Input label="Datum" type="date" value={date} onChange={setDate} />
           <Input label="Ort" value={location} onChange={setLocation} />
           <Input label="Kommentar" value={comment} onChange={setComment} />
         </div>
-        <div className="mt-6 flex flex-wrap gap-3"><button className="rounded-full bg-wine px-5 py-2 font-bold text-white disabled:opacity-50" disabled={wine.currentBottles <= 0} onClick={() => onConsume(comment, location, date)}>Austrinken</button><button className="rounded-full bg-neutral-100 px-5 py-2" onClick={onClose}>Abbrechen</button></div>
+        <div className="mt-6 flex flex-wrap gap-3"><button className="rounded-full bg-neutral-950 px-5 py-2 font-bold text-white" onClick={onEdit}>Bearbeiten</button><button className="rounded-full bg-wine px-5 py-2 font-bold text-white disabled:opacity-50" disabled={wine.currentBottles <= 0} onClick={() => onConsume(comment, location, date)}>Austrinken</button><button className="rounded-full bg-neutral-100 px-5 py-2" onClick={onClose}>Abbrechen</button></div>
       </div>
     </div>
   );
 }
 
-function Input({ label, value, onChange, type = "text", required = false }: { label: string; value: string | number; onChange: (value: string) => void; type?: string; required?: boolean }) {
-  return <label className="text-sm font-medium text-neutral-700"><span>{label}</span><input className="focus-ring mt-1 w-full rounded-2xl border border-black/10 bg-white px-3 py-2" type={type} value={value} required={required} onChange={(event) => onChange(event.target.value)} /></label>;
+function clampRating(value: string) {
+  const parsed = Number(value);
+  if (Number.isNaN(parsed)) return 1;
+  return Math.min(5, Math.max(1, Math.round(parsed * 10) / 10));
+}
+
+function Input({ label, value, onChange, type = "text", required = false, min, max, step }: { label: string; value: string | number; onChange: (value: string) => void; type?: string; required?: boolean; min?: number; max?: number; step?: number }) {
+  return <label className="text-sm font-medium text-neutral-700"><span>{label}</span><input className="focus-ring mt-1 w-full rounded-2xl border border-black/10 bg-white px-3 py-2" type={type} min={min} max={max} step={step} value={value} required={required} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
 function Select({ label, value, options, onChange }: { label: string; value: string; options: readonly string[]; onChange: (value: string) => void }) {

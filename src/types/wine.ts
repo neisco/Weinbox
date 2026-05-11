@@ -63,7 +63,7 @@ export type DrinkEvent = {
   wineType?: (typeof wineTypes)[number];
   country?: string;
   region?: string;
-  rating: 1 | 2 | 3 | 4 | 5;
+  rating: number;
   comment?: string;
   consumedAt: string;
   location?: string;
