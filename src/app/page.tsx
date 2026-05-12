@@ -555,10 +555,14 @@ function DrinkModal({ wine, rating, setRating, onClose, onEdit, onConsume }: { w
   const [comment, setComment] = useState("");
   const [location, setLocation] = useState("Zuhause");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  if (!wine || !wine.id) {
+    onClose();
+    return null;
+  }
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-black/40 p-4 backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-[2rem] bg-white p-6 shadow-2xl">
-        <h2 className="text-2xl font-bold">{wine.name}</h2>
+        <h2 className="text-2xl font-bold">{wine.name ?? "Wein"}</h2>
         <p className="text-neutral-500">Was möchtest du tun?</p>
         <div className="mt-5 grid gap-3">
           <Select label="Bewertung" value={String(rating)} options={["1", "2", "3", "4", "5"]} onChange={(value) => setRating(Number(value) as 1 | 2 | 3 | 4 | 5)} />
@@ -566,7 +570,7 @@ function DrinkModal({ wine, rating, setRating, onClose, onEdit, onConsume }: { w
           <Input label="Ort" value={location} onChange={setLocation} />
           <Input label="Kommentar" value={comment} onChange={setComment} />
         </div>
-        <div className="mt-6 flex flex-wrap gap-3"><button className="rounded-full bg-wine px-5 py-2 font-bold text-white disabled:opacity-50" disabled={wine.currentBottles <= 0} onClick={() => onConsume(comment, location, date)}>Austrinken</button><button className="rounded-full bg-neutral-950 px-5 py-2 font-bold text-white" onClick={onEdit}>Bearbeiten</button><button className="rounded-full bg-neutral-100 px-5 py-2" onClick={onClose}>Abbrechen</button></div>
+        <div className="mt-6 flex flex-wrap gap-3"><button className="rounded-full bg-wine px-5 py-2 font-bold text-white disabled:opacity-50" disabled={(wine.currentBottles ?? 0) <= 0} onClick={() => onConsume(comment, location, date)}>Austrinken</button><button className="rounded-full bg-neutral-950 px-5 py-2 font-bold text-white" onClick={onEdit}>Bearbeiten</button><button className="rounded-full bg-neutral-100 px-5 py-2" onClick={onClose}>Abbrechen</button></div>
       </div>
     </div>
   );
