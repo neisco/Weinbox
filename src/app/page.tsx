@@ -169,13 +169,7 @@ export default function Home() {
     <Shell>
       <header className="flex flex-col gap-5 rounded-[2rem] bg-neutral-950 p-5 text-white shadow-2xl md:flex-row md:items-center md:justify-between md:p-7">
         <div>
-          <div className="flex items-center gap-3">
-            <Logo />
-            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/75">MVP</span>
-          </div>
-          <p className="mt-3 max-w-2xl text-sm text-white/70">
-            Verwalte deinen privaten Weinkeller, trinke Flaschen mit Historie aus und halte Import, Export, Marktwert und Trinkfenster im Blick.
-          </p>
+          <Logo />
         </div>
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <span className="rounded-full bg-white/10 px-4 py-2">{profile.displayName ?? profile.email}</span>
@@ -286,7 +280,7 @@ function SetupMissingScreen() {
 }
 
 function Logo() {
-  return <div className="text-3xl font-black tracking-tight"><span className="text-white">Wein</span><span className="text-rose-300">box</span></div>;
+  return <div className="text-4xl font-black tracking-tight"><span className="text-white">Wein</span><span className="text-wine">box</span></div>;
 }
 
 function LoginScreen({ error }: { error?: string | null }) {
