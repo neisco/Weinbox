@@ -21,6 +21,24 @@ import { createSearchIndex, duplicateKey } from "@/lib/wine/utils";
 const winesPath = (uid: string) => collection(db, "cellars", uid, "wines");
 const drinksPath = (uid: string) => collection(db, "cellars", uid, "drinkEvents");
 
+function cleanFirestoreData<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => cleanFirestoreData(item))
+      .filter((item) => item !== undefined) as T;
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, entry]) => entry !== undefined)
+        .map(([key, entry]) => [key, cleanFirestoreData(entry)])
+    ) as T;
+  }
+
+  return value;
+}
+
 export async function fetchWines(uid: string) {
   const snap = await getDocs(query(winesPath(uid), orderBy("updatedAt", "desc"), limit(500)));
   return snap.docs.map((item) => ({ id: item.id, ...item.data() }) as Wine);
@@ -33,13 +51,28 @@ export async function fetchDrinkEvents(uid: string) {
 
 export async function upsertWine(uid: string, input: Omit<Wine, "ownerId" | "createdAt" | "updatedAt" | "searchIndex" | "status"> & { id?: string }) {
   const now = new Date().toISOString();
-  const payload = {
+
+  const normalizedInput = {
     ...input,
+    purchasePrice: input.purchasePrice ?? null,
+    marketValue: input.marketValue ?? null
+  };
+
+  const payload = cleanFirestoreData({
+    ...normalizedInput,
     ownerId: uid,
     updatedAt: now,
     status: input.currentBottles === 0 ? "empty" : "active",
-    searchIndex: createSearchIndex([input.name, input.producer, input.vintage, input.country, input.region, input.grapes, input.storageLocation])
-  };
+    searchIndex: createSearchIndex([
+      input.name,
+      input.producer,
+      input.vintage,
+      input.country,
+      input.region,
+      input.grapes,
+      input.storageLocation
+    ])
+  });
 
   if (input.id) {
     await setDoc(doc(winesPath(uid), input.id), payload, { merge: true });
@@ -48,23 +81,31 @@ export async function upsertWine(uid: string, input: Omit<Wine, "ownerId" | "cre
 
   const key = duplicateKey(input as Wine);
   const existing = await getDocs(query(winesPath(uid), where("duplicateKey", "==", key), limit(1)));
+
   if (!existing.empty) {
     const existingDoc = existing.docs[0];
-    await updateDoc(existingDoc.ref, {
-      currentBottles: increment(input.currentBottles),
-      originalBottles: increment(input.currentBottles),
-      updatedAt: now,
-      status: "active"
-    });
+    await updateDoc(
+      existingDoc.ref,
+      cleanFirestoreData({
+        currentBottles: increment(input.currentBottles),
+        originalBottles: increment(input.currentBottles),
+        updatedAt: now,
+        status: "active"
+      })
+    );
     return existingDoc.id;
   }
 
-  const ref = await addDoc(winesPath(uid), {
-    ...payload,
-    duplicateKey: key,
-    createdAt: now,
-    serverUpdatedAt: serverTimestamp()
-  });
+  const ref = await addDoc(
+    winesPath(uid),
+    cleanFirestoreData({
+      ...payload,
+      duplicateKey: key,
+      createdAt: now,
+      serverUpdatedAt: serverTimestamp()
+    })
+  );
+
   return ref.id;
 }
 
@@ -72,36 +113,68 @@ export async function consumeBottle(uid: string, wine: Wine, event: Omit<DrinkEv
   if (!wine.id) throw new Error("Wein-ID fehlt");
   const wineRef = doc(winesPath(uid), wine.id);
   const eventRef = doc(drinksPath(uid));
+
   await runTransaction(db, async (transaction) => {
     const snap = await transaction.get(wineRef);
     const current = Number(snap.data()?.currentBottles ?? 0);
+
     if (current <= 0) throw new Error("Der Bestand kann nicht negativ werden.");
-    transaction.update(wineRef, {
-      currentBottles: current - 1,
-      consumedBottles: increment(1),
-      status: current - 1 === 0 ? "empty" : "active",
-      updatedAt: new Date().toISOString()
-    });
-    transaction.set(eventRef, {
-      ...event,
-      ownerId: uid,
-      wineId: wine.id,
-      source: "cellar",
-      createdAt: new Date().toISOString()
-    });
+
+    transaction.update(
+      wineRef,
+      cleanFirestoreData({
+        currentBottles: current - 1,
+        consumedBottles: increment(1),
+        status: current - 1 === 0 ? "empty" : "active",
+        updatedAt: new Date().toISOString()
+      })
+    );
+
+    transaction.set(
+      eventRef,
+      cleanFirestoreData({
+        ...event,
+        ownerId: uid,
+        wineId: wine.id,
+        source: "cellar",
+        createdAt: new Date().toISOString()
+      })
+    );
   });
 }
 
 export async function addExternalDrink(uid: string, event: Omit<DrinkEvent, "ownerId" | "source" | "createdAt">) {
-  await addDoc(drinksPath(uid), { ...event, ownerId: uid, source: "external", createdAt: new Date().toISOString() });
+  await addDoc(
+    drinksPath(uid),
+    cleanFirestoreData({
+      ...event,
+      ownerId: uid,
+      source: "external",
+      createdAt: new Date().toISOString()
+    })
+  );
 }
 
 export async function softDeleteWine(uid: string, wineId: string) {
-  await updateDoc(doc(winesPath(uid), wineId), { status: "deleted", deletedAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+  await updateDoc(
+    doc(winesPath(uid), wineId),
+    cleanFirestoreData({
+      status: "deleted",
+      deletedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    })
+  );
 }
 
 export async function restoreWine(uid: string, wineId: string) {
-  await updateDoc(doc(winesPath(uid), wineId), { status: "active", deletedAt: null, updatedAt: new Date().toISOString() });
+  await updateDoc(
+    doc(winesPath(uid), wineId),
+    cleanFirestoreData({
+      status: "active",
+      deletedAt: null,
+      updatedAt: new Date().toISOString()
+    })
+  );
 }
 
 export async function permanentlyDeleteWine(uid: string, wineId: string) {
