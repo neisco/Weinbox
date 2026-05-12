@@ -33,7 +33,6 @@ import { downloadTemplate, exportWines, parseWineImport } from "@/lib/excel/temp
 import { applyWineFilters, currency, isDrinkReady } from "@/lib/wine/utils";
 import { DrinkEvent, UserProfile, Wine, WineFilters, bottleSizes, wineTypes } from "@/types/wine";
 import { createInvitation, deleteUserProfile, fetchUsers, setUserDisabled } from "@/lib/firebase/admin-service";
-import AiHelper from "@/components/ai-helper";
 
 const emptyFilters: WineFilters = {
   query: "",
@@ -82,7 +81,7 @@ type WineFormPayload = WineFormState & { id?: string };
 export default function Home() {
   const { user, profile, loading, error: authError, isConfigured } = useAuthUser();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"dashboard" | "cellar" | "history" | "import" | "admin" | "privacy" | "ai">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "cellar" | "history" | "import" | "admin" | "privacy">("dashboard");
   const [filters, setFilters] = useState(emptyFilters);
   const [wineForm, setWineForm] = useState<WineFormState>(initialWine);
   const [selectedWine, setSelectedWine] = useState<Wine | null>(null);
@@ -194,7 +193,6 @@ export default function Home() {
           ["cellar", "Keller", WineIcon],
           ["history", "Trinkhistorie", Grape],
           ["import", "Import/Export", Upload],
-          ["ai", "AI-Assistent", Search],
           ["privacy", "Datenschutz", ShieldCheck],
           ...(profile.role === "admin" ? [["admin", "Admin", ShieldCheck]] as const : [])
         ].map(([key, label, Icon]) => (
@@ -234,7 +232,6 @@ export default function Home() {
           importAll={() => Promise.all(importPreview.map((item) => upsertWine(user.uid, item))).then(() => { setImportPreview([]); invalidate(); })}
         />
       )}
-      {activeTab === "ai" && <AiHelper />}
       {activeTab === "admin" && profile.role === "admin" && <AdminPanel />}
       {activeTab === "privacy" && <Privacy />}
 
