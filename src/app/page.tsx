@@ -76,6 +76,7 @@ const initialWine = {
 };
 
 type WineFormState = typeof initialWine;
+type WineFormPayload = WineFormState & { id?: string };
 
 export default function Home() {
   const { user, profile, loading, error: authError, isConfigured } = useAuthUser();
@@ -84,6 +85,7 @@ export default function Home() {
   const [filters, setFilters] = useState(emptyFilters);
   const [wineForm, setWineForm] = useState<WineFormState>(initialWine);
   const [selectedWine, setSelectedWine] = useState<Wine | null>(null);
+  const [editingWineId, setEditingWineId] = useState<string | null>(null);
   const [importPreview, setImportPreview] = useState<WineFormState[]>([]);
   const [rating, setRating] = useState<1 | 2 | 3 | 4 | 5>(4);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -96,10 +98,46 @@ export default function Home() {
     void queryClient.invalidateQueries({ queryKey: ["drinkEvents", user?.uid] });
   };
 
+  const startEditWine = (wine: Wine) => {
+    setWineForm({
+      name: wine.name,
+      producer: wine.producer,
+      vintage: wine.vintage,
+      type: wine.type,
+      country: wine.country,
+      region: wine.region,
+      bottleSize: wine.bottleSize,
+      currentBottles: wine.currentBottles,
+      originalBottles: wine.originalBottles,
+      consumedBottles: wine.consumedBottles,
+      grapes: wine.grapes ?? "",
+      grapeShares: wine.grapeShares ?? "",
+      purchasePrice: wine.purchasePrice ?? undefined,
+      purchaseDate: wine.purchaseDate ?? "",
+      purchasePlace: wine.purchasePlace ?? "",
+      comment: wine.comment ?? "",
+      drinkFrom: wine.drinkFrom ?? "",
+      drinkUntil: wine.drinkUntil ?? "",
+      marketValue: wine.marketValue ?? undefined,
+      lastMarketSync: wine.lastMarketSync ?? "",
+      imageUrl: wine.imageUrl ?? "",
+      storageLocation: wine.storageLocation ?? "",
+      shelf: wine.shelf ?? "",
+      compartment: wine.compartment ?? "",
+      row: wine.row ?? "",
+      favorite: wine.favorite ?? false
+    });
+    setEditingWineId(wine.id ?? null);
+    setActionError(null);
+    setSelectedWine(null);
+    setActiveTab("cellar");
+  };
+
   const saveWine = useMutation({
-    mutationFn: (wine: WineFormState) => upsertWine(user!.uid, wine),
+    mutationFn: (wine: WineFormPayload) => upsertWine(user!.uid, wine),
     onSuccess: () => {
       setWineForm(initialWine);
+      setEditingWineId(null);
       setActionError(null);
       invalidate();
     },
@@ -171,7 +209,8 @@ export default function Home() {
           onFilters={setFilters}
           wineForm={wineForm}
           setWineForm={setWineForm}
-          saveWine={(event) => { event.preventDefault(); saveWine.mutate(wineForm); }}
+          editing={Boolean(editingWineId)}
+          saveWine={(event) => { event.preventDefault(); saveWine.mutate({ ...wineForm, id: editingWineId ?? undefined }); }}
           saving={saveWine.isPending}
           wines={visibleWines}
           allWines={wines}
@@ -202,6 +241,7 @@ export default function Home() {
           rating={rating}
           setRating={setRating}
           onClose={() => setSelectedWine(null)}
+          onEdit={() => startEditWine(selectedWine)}
           onConsume={(comment, location, consumedAt) => consume.mutate({
             wine: selectedWine,
             event: {
@@ -331,7 +371,7 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 
 function Cellar(props: {
   filters: WineFilters; onFilters: (filters: WineFilters) => void; wineForm: WineFormState; setWineForm: (wine: WineFormState) => void;
-  saveWine: (event: FormEvent) => void; saving: boolean; wines: Wine[]; allWines: Wine[]; selectWine: (wine: Wine) => void; deleteWine: (id: string) => void; restoreWine: (id: string) => void;
+  editing: boolean; saveWine: (event: FormEvent) => void; saving: boolean; wines: Wine[]; allWines: Wine[]; selectWine: (wine: Wine) => void; deleteWine: (id: string) => void; restoreWine: (id: string) => void;
 }) {
   return (
     <section className="grid gap-6 lg:grid-cols-[26rem_1fr]">
@@ -350,11 +390,11 @@ function Cellar(props: {
   );
 }
 
-function WineForm({ wineForm, setWineForm, saveWine, saving }: { wineForm: WineFormState; setWineForm: (wine: WineFormState) => void; saveWine: (event: FormEvent) => void; saving: boolean }) {
+function WineForm({ wineForm, setWineForm, saveWine, saving, editing }: { wineForm: WineFormState; setWineForm: (wine: WineFormState) => void; saveWine: (event: FormEvent) => void; saving: boolean; editing: boolean }) {
   const update = (key: keyof WineFormState, value: string | number | boolean | undefined) => setWineForm({ ...wineForm, [key]: value });
   return (
     <form onSubmit={saveWine} className="glass-card h-fit rounded-[2rem] p-5">
-      <h2 className="text-xl font-bold"><Plus className="mr-2 inline size-5" />Wein hinzufügen</h2>
+      <h2 className="text-xl font-bold"><Plus className="mr-2 inline size-5" />{editing ? "Wein bearbeiten" : "Wein hinzufügen"}</h2>
       <div className="mt-4 grid gap-3">
         <Input label="Weinname*" value={wineForm.name} onChange={(value) => update("name", value)} required />
         <Input label="Produzent*" value={wineForm.producer} onChange={(value) => update("producer", value)} required />
@@ -366,7 +406,7 @@ function WineForm({ wineForm, setWineForm, saveWine, saving }: { wineForm: WineF
         <div className="grid grid-cols-2 gap-3"><Input label="Trinkreif ab" type="date" value={wineForm.drinkFrom} onChange={(value) => update("drinkFrom", value)} /><Input label="Trinkreif bis" type="date" value={wineForm.drinkUntil} onChange={(value) => update("drinkUntil", value)} /></div>
         <div className="grid grid-cols-3 gap-3"><Input label="Lagerort" value={wineForm.storageLocation} onChange={(value) => update("storageLocation", value)} /><Input label="Regal" value={wineForm.shelf} onChange={(value) => update("shelf", value)} /><Input label="Fach" value={wineForm.compartment} onChange={(value) => update("compartment", value)} /></div>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={wineForm.favorite} onChange={(event) => update("favorite", event.target.checked)} /> Favorit</label>
-        <button className="focus-ring rounded-full bg-wine py-3 font-bold text-white disabled:opacity-50" disabled={saving}>{saving ? "Speichert…" : "Speichern & zusammenführen"}</button>
+        <button className="focus-ring rounded-full bg-wine py-3 font-bold text-white disabled:opacity-50" disabled={saving}>{saving ? "Speichert…" : editing ? "Speichern" : "Speichern & zusammenführen"}</button>
       </div>
     </form>
   );
@@ -483,7 +523,7 @@ function Privacy() {
   );
 }
 
-function DrinkModal({ wine, rating, setRating, onClose, onConsume }: { wine: Wine; rating: 1 | 2 | 3 | 4 | 5; setRating: (rating: 1 | 2 | 3 | 4 | 5) => void; onClose: () => void; onConsume: (comment: string, location: string, date: string) => void }) {
+function DrinkModal({ wine, rating, setRating, onClose, onEdit, onConsume }: { wine: Wine; rating: 1 | 2 | 3 | 4 | 5; setRating: (rating: 1 | 2 | 3 | 4 | 5) => void; onClose: () => void; onEdit: () => void; onConsume: (comment: string, location: string, date: string) => void }) {
   const [comment, setComment] = useState("");
   const [location, setLocation] = useState("Zuhause");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -498,7 +538,7 @@ function DrinkModal({ wine, rating, setRating, onClose, onConsume }: { wine: Win
           <Input label="Ort" value={location} onChange={setLocation} />
           <Input label="Kommentar" value={comment} onChange={setComment} />
         </div>
-        <div className="mt-6 flex flex-wrap gap-3"><button className="rounded-full bg-wine px-5 py-2 font-bold text-white disabled:opacity-50" disabled={wine.currentBottles <= 0} onClick={() => onConsume(comment, location, date)}>Austrinken</button><button className="rounded-full bg-neutral-100 px-5 py-2" onClick={onClose}>Abbrechen</button></div>
+        <div className="mt-6 flex flex-wrap gap-3"><button className="rounded-full bg-wine px-5 py-2 font-bold text-white disabled:opacity-50" disabled={wine.currentBottles <= 0} onClick={() => onConsume(comment, location, date)}>Austrinken</button><button className="rounded-full bg-neutral-950 px-5 py-2 font-bold text-white" onClick={onEdit}>Bearbeiten</button><button className="rounded-full bg-neutral-100 px-5 py-2" onClick={onClose}>Abbrechen</button></div>
       </div>
     </div>
   );
