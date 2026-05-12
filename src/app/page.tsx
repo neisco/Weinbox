@@ -483,18 +483,26 @@ function ImportExport({ wines, preview, setPreview, importAll }: { wines: Wine[]
 function AdminPanel() {
   const [email, setEmail] = useState("");
   const [inviteLink, setInviteLink] = useState("");
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const usersQuery = useQuery({ queryKey: ["admin-users"], queryFn: fetchUsers });
   const users = usersQuery.data ?? [];
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+  const handleCreateInvite = () => {
+    setInviteError(null);
+    createInvitation(email || undefined)
+      .then(setInviteLink)
+      .catch((err: unknown) => setInviteError(err instanceof Error ? err.message : "Fehler beim Erstellen des Einladungslinks"));
+  };
   return (
     <section className="glass-card rounded-[2rem] p-6">
       <h2 className="text-xl font-bold">Nutzerverwaltung</h2>
       <p className="mt-2 text-neutral-600">Admins können Nutzer einladen, deaktivieren und löschen. Private Weinkeller bleiben durch Security Rules unsichtbar.</p>
       <div className="mt-5 flex flex-col gap-3 md:flex-row">
         <Input label="E-Mail für Einladung" value={email} onChange={setEmail} />
-        <button className="mt-6 rounded-full bg-wine px-5 py-2 font-bold text-white" onClick={() => void createInvitation(email).then(setInviteLink)}>Einladungslink erstellen</button>
+        <button className="mt-6 rounded-full bg-wine px-5 py-2 font-bold text-white disabled:bg-neutral-300" disabled={!email.trim()} onClick={handleCreateInvite}>Einladungslink erstellen</button>
       </div>
+      {inviteError && <Alert message={inviteError} />}
       {inviteLink && <p className="mt-3 break-all rounded-2xl bg-white p-3 text-sm">WhatsApp-Link / E-Mail-Link: {inviteLink}</p>}
       <div className="mt-6 space-y-3">{users.map((managedUser: UserProfile) => (
         <div key={managedUser.uid} className="flex flex-col justify-between gap-3 rounded-2xl bg-white p-4 md:flex-row md:items-center">
