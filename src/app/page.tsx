@@ -484,15 +484,31 @@ function AdminPanel() {
   const [email, setEmail] = useState("");
   const [inviteLink, setInviteLink] = useState("");
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
   const queryClient = useQueryClient();
   const usersQuery = useQuery({ queryKey: ["admin-users"], queryFn: fetchUsers });
   const users = usersQuery.data ?? [];
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
   const handleCreateInvite = () => {
     setInviteError(null);
+    setCopySuccess(false);
     createInvitation(email || undefined)
       .then(setInviteLink)
       .catch((err: unknown) => setInviteError(err instanceof Error ? err.message : "Fehler beim Erstellen des Einladungslinks"));
+  };
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(inviteLink);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
+  };
+  const handleEmailLink = () => {
+    const subject = encodeURIComponent("Einladung zu Weinbox");
+    const body = encodeURIComponent(`Hallo,\n\ndu bist eingeladen, Weinbox zu nutzen.\n\nKlick hier um beizutreten:\n${inviteLink}\n\nViel Spass!`);
+    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+  };
+  const handleWhatsAppLink = () => {
+    const text = encodeURIComponent(`Hallo! Ich lade dich zu Weinbox ein.\nKlick hier: ${inviteLink}`);
+    window.open(`https://wa.me/?text=${text}`, "_blank");
   };
   return (
     <section className="glass-card rounded-[2rem] p-6">
@@ -503,7 +519,17 @@ function AdminPanel() {
         <button className="mt-6 rounded-full bg-wine px-5 py-2 font-bold text-white disabled:bg-neutral-300" disabled={!email.trim()} onClick={handleCreateInvite}>Einladungslink erstellen</button>
       </div>
       {inviteError && <Alert message={inviteError} />}
-      {inviteLink && <p className="mt-3 break-all rounded-2xl bg-white p-3 text-sm">WhatsApp-Link / E-Mail-Link: {inviteLink}</p>}
+      {inviteLink && (
+        <div className="mt-6 rounded-3xl border-2 border-green-200 bg-green-50 p-5">
+          <p className="text-sm font-semibold text-green-900">✓ Einladungslink erstellt!</p>
+          <p className="mt-2 break-all rounded-2xl bg-white p-3 font-mono text-sm text-neutral-700">{inviteLink}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button className="rounded-full bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700" onClick={handleCopyLink}>{copySuccess ? "✓ Kopiert!" : "Link kopieren"}</button>
+            <button className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" onClick={handleEmailLink}>📧 E-Mail öffnen</button>
+            <button className="rounded-full bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600" onClick={handleWhatsAppLink}>💬 WhatsApp</button>
+          </div>
+        </div>
+      )}
       <div className="mt-6 space-y-3">{users.map((managedUser: UserProfile) => (
         <div key={managedUser.uid} className="flex flex-col justify-between gap-3 rounded-2xl bg-white p-4 md:flex-row md:items-center">
           <div><strong>{managedUser.displayName ?? managedUser.email ?? managedUser.uid}</strong><p className="text-sm text-neutral-500">{managedUser.role} · {managedUser.disabled ? "deaktiviert" : "aktiv"}</p></div>
